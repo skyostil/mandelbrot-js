@@ -33,6 +33,7 @@ var reInitCanvas = true; // Whether to reload canvas size, etc
 var dragToZoom = true;
 var colors = [[0,0,0,0]];
 var renderId = 0; // To zoom before current render is finished
+var useRequestIdleFrame = false;
 
 /*
  * Initialize canvas
@@ -55,6 +56,23 @@ function $(id)
 {
   return document.getElementById(id);
 }
+
+function onRequestIdleFrameClicked()
+{
+  if ($('useRequestIdleFrame').checked) {
+    $('updateTimeoutBox').style.display="none";
+  } else {
+    $('updateTimeoutBox').style.display="";
+  }
+}
+
+function animateSpinner(timestamp) {
+  var width = parseInt(window.getComputedStyle($('spinnerContainer')).width);
+  var x = -(timestamp / 8) % width;
+  $('spinner').style.left = x + 'px';
+  window.requestAnimationFrame(animateSpinner);
+}
+window.requestAnimationFrame(animateSpinner);
 
 function focusOnSubmit()
 {
@@ -205,6 +223,11 @@ function readHashTag()
         $('colorScheme').value = String(val);
         redraw = true;
       } break;
+
+      case 'useRequestIdleFrame': {
+        $('useRequestIdleFrame').checked = false;
+        redraw = true;
+      }
     }
   }
 
@@ -336,6 +359,8 @@ function draw(pickColor, superSamples)
     $('steps').value = String(steps);
   }
 
+  useRequestIdleFrame = $('useRequestIdleFrame').checked;
+
   var escapeRadius = Math.pow(parseFloat($('escapeRadius').value), 2.0);
   var dx = (xRange[1] - xRange[0]) / (0.5 + (canvas.width-1));
   var dy = (yRange[1] - yRange[0]) / (0.5 + (canvas.height-1));
@@ -398,10 +423,11 @@ function draw(pickColor, superSamples)
 
   function render()
   {
-    var start  = (new Date).getTime();
+    var start  = performance.now();
     var startHeight = canvas.height;
     var startWidth = canvas.width;
     var lastUpdate = start;
+    var estimatedLastStepMs = 5;
     var updateTimeout = parseFloat($('updateTimeout').value);
     var pixels = 0;
     var Ci = yRange[0];
@@ -409,7 +435,14 @@ function draw(pickColor, superSamples)
     var drawLineFunc = superSamples>1? drawLineSuperSampled : drawLine;
     var ourRenderId = renderId;
 
-    var scanline = function()
+    var shouldYield = function(now, deadline, lastUpdate, updateTimeout) {
+      if (useRequestIdleFrame) {
+        return (now + estimatedLastStepMs) >= deadline;
+      } else {
+        return (now - lastUpdate) >= updateTimeout;
+      }
+    }
+    var scanline = function(now, deadline)
     {
       if (    renderId != ourRenderId ||
            startHeight != canvas.height ||
@@ -418,13 +451,13 @@ function draw(pickColor, superSamples)
         // Stop drawing
         return;
       }
+      if (!now)
+        now = performance.now()
 
       drawLineFunc(Ci, 0, xRange[0], dx);
       Ci += Ci_step;
       pixels += canvas.width;
       ctx.putImageData(img, 0, sy);
-
-      var now = (new Date).getTime();
 
       /*
        * Javascript is inherently single-threaded, and the way
@@ -438,7 +471,7 @@ function draw(pickColor, superSamples)
        * do something in between.
        */
       if ( sy++ < canvas.height ) {
-        if ( (now - lastUpdate) >= updateTimeout ) {
+        if ( shouldYield(now, deadline, lastUpdate, updateTimeout) ) {
           // show the user where we're rendering
           drawSolidLine(0, [255,59,3,255]);
           ctx.putImageData(img, 0, sy);
@@ -458,15 +491,29 @@ function draw(pickColor, superSamples)
           $('renderSpeed').innerHTML = metric_units(speed);
 
           // yield control back to browser, so that canvas is updated
-          lastUpdate = now;
-          setTimeout(scanline, 0);
+          if (useRequestIdleFrame) {
+            // Perform exponential moving average to estimate last step time
+            thisLastStepMs = performance.now() - now;
+            estimatedLastStepMs = estimatedLastStepMs + 0.5 * (thisLastStepMs - estimatedLastStepMs);
+          } else {
+            lastUpdate = now;
+          }
+          if (useRequestIdleFrame) {
+            requestIdleFrame(scanline);
+          } else {
+            setTimeout(scanline, 0);
+          }
         } else
-          scanline();
+          scanline(performance.now(), deadline);
       }
     };
 
     // Disallow redrawing while rendering
-    scanline();
+    if (useRequestIdleFrame) {
+      requestIdleFrame(scanline);
+    } else {
+      setTimeout(scanline, 0);
+    }
   }
 
   render();

@@ -141,6 +141,29 @@
         font-size: 10pt;
       }
 
+      #spinner {
+        width: 600px;
+        height: 10px;
+        border-right: black;
+        position: relative;
+        background: repeating-linear-gradient(
+          -45deg,
+          orange,
+          orange 21px,
+          yellow 21px,
+          yellow 42px
+        );
+      }
+
+      #spinnerContainer {
+        width: 300px;
+        height: 10px;
+        overflow: hidden;
+        border: solid thin darkorange;
+        border-radius: 4px;
+        margin-top: 50px;
+      }
+
       hr {
         border-color: #222;
       }
@@ -159,6 +182,11 @@
 
       <form id="settingsForm" action="javascript:draw(getColorPicker(), getSamples());">
         <table>
+        <tr>
+          <div id="spinnerContainer">
+            <div id="spinner"></div>
+          </div>
+        </tr>
         <tr>
           <td>Rendering time</td>
           <td>
@@ -181,25 +209,29 @@
         <tr>
           <td>Escape radius</td>
           <td> <input class="textInput" size="4" type="text"
-            id="escapeRadius" value="10.0" /> </td>
+            id="escapeRadius" value="100.0" /> </td>
         </tr>
         <tr>
           <td>Color scheme</td>
           <td>
             <select id="colorScheme">
+              <option value="pickColorHSV3">HSV #2 Blue</option>
               <option value="pickColorGrayscale">Grayscale #1</option>
               <option value="pickColorHSV1">HSV #1</option>
               <option value="pickColorHSV2">HSV #2 Red</option>
-              <option value="pickColorHSV3">HSV #2 Blue</option>
               <option value="pickColorGrayscale2">Grayscale #2</option>
             </select>
           </td>
         </tr>
         <tr>
           <td>Supersamples</td>
-          <td><input class="textInput" size="4" type="text" id="superSamples" value="1" /></td>
+          <td><input class="textInput" size="4" type="text" id="superSamples" value="5" /></td>
         </tr>
         <tr>
+          <td>Use RequestIdleFrame</td>
+          <td><input type="checkbox" id="useRequestIdleFrame" onclick="onRequestIdleFrameClicked()"/><td/>
+        </tr>
+        <tr id="updateTimeoutBox" >
           <td>Scanline update (ms)</td>
           <td><input class="textInput" size="4" type="text"
                 id="updateTimeout" value="200" /></td>
