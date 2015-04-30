@@ -148,8 +148,8 @@
         position: relative;
         background: repeating-linear-gradient(
           -45deg,
-          orange,
-          orange 21px,
+          darkorange,
+          darkorange 21px,
           yellow 21px,
           yellow 42px
         );
@@ -180,7 +180,7 @@
         </div>
       </header>
 
-      <form id="settingsForm" action="javascript:draw(getColorPicker(), getSamples());">
+      <form id="settingsForm" action="javascript:draw(getColorPicker(), getSamples(), true);">
         <table>
         <tr>
           <div id="spinnerContainer">
@@ -202,8 +202,8 @@
         <tr>
           <td>Iterations</td>
           <td>
-            <input class="textInput" size="4" type="text" id="steps" value="50" />
-            <input type="checkbox" id="autoIterations" checked="checked"/>
+            <input class="textInput" size="4" type="text" id="steps" value="500" />
+            <input type="checkbox" id="autoIterations"/>
             <small>auto</small></td>
         </tr>
         <tr>
@@ -231,10 +231,10 @@
           <td>Use RequestIdleFrame</td>
           <td><input type="checkbox" id="useRequestIdleFrame" onclick="onRequestIdleFrameClicked()"/><td/>
         </tr>
-        <tr id="updateTimeoutBox" >
-          <td>Scanline update (ms)</td>
+        <tr id="updateScanlinesBox" >
+          <td>Scanlines before yield</td>
           <td><input class="textInput" size="4" type="text"
-                id="updateTimeout" value="200" /></td>
+                id="scanlineCount" value="20" /></td>
         </tr>
         <tr>
           <td colspan="2">&nbsp;</td>

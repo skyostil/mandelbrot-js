@@ -60,9 +60,9 @@ function $(id)
 function onRequestIdleFrameClicked()
 {
   if ($('useRequestIdleFrame').checked) {
-    $('updateTimeoutBox').style.display="none";
+    $('updateScanlinesBox').style.display="none";
   } else {
-    $('updateTimeoutBox').style.display="";
+    $('updateScanlinesBox').style.display="";
   }
 }
 
@@ -322,13 +322,14 @@ function divRGB(v, div)
 /*
  * Render the Mandelbrot set
  */
-function draw(pickColor, superSamples)
+function draw(pickColor, superSamples, clear)
 {
   if ( lookAt === null ) lookAt = [-0.6, 0];
   if ( zoom === null ) zoom = [zoomStart, zoomStart];
 
   xRange = [lookAt[0]-zoom[0]/2, lookAt[0]+zoom[0]/2];
   yRange = [lookAt[1]-zoom[1]/2, lookAt[1]+zoom[1]/2];
+
 
   if ( reInitCanvas ) {
     reInitCanvas = false;
@@ -346,6 +347,9 @@ function draw(pickColor, superSamples)
 
     adjustAspectRatio(xRange, yRange, canvas);
   }
+
+  if (clear)
+    ctx.clearRect(0, 0, ccanvas.width, ccanvas.height);
 
   var steps = parseInt($('steps').value, 10);
 
@@ -426,20 +430,19 @@ function draw(pickColor, superSamples)
     var start  = performance.now();
     var startHeight = canvas.height;
     var startWidth = canvas.width;
-    var lastUpdate = start;
     var estimatedLastStepMs = 5;
-    var updateTimeout = parseFloat($('updateTimeout').value);
+    var scanlineCount = parseFloat($('scanlineCount').value);
     var pixels = 0;
     var Ci = yRange[0];
     var sy = 0;
     var drawLineFunc = superSamples>1? drawLineSuperSampled : drawLine;
     var ourRenderId = renderId;
 
-    var shouldYield = function(now, deadline, lastUpdate, updateTimeout) {
+    var shouldYield = function(now, deadline, count) {
       if (useRequestIdleFrame) {
         return (now + estimatedLastStepMs) >= deadline;
       } else {
-        return (now - lastUpdate) >= updateTimeout;
+        return count >= scanlineCount;
       }
     }
     var scanline = function(now, deadline)
@@ -454,11 +457,6 @@ function draw(pickColor, superSamples)
       if (!now)
         now = performance.now()
 
-      drawLineFunc(Ci, 0, xRange[0], dx);
-      Ci += Ci_step;
-      pixels += canvas.width;
-      ctx.putImageData(img, 0, sy);
-
       /*
        * Javascript is inherently single-threaded, and the way
        * you yield thread control back to the browser is MYSTERIOUS.
@@ -470,41 +468,47 @@ function draw(pickColor, superSamples)
        * to render everything, because of overhead.  So therefore, we'll
        * do something in between.
        */
-      if ( sy++ < canvas.height ) {
-        if ( shouldYield(now, deadline, lastUpdate, updateTimeout) ) {
-          // show the user where we're rendering
-          drawSolidLine(0, [255,59,3,255]);
+      count = 0;
+      do {
+          drawLineFunc(Ci, 0, xRange[0], dx);
+          Ci += Ci_step;
+          pixels += canvas.width;
           ctx.putImageData(img, 0, sy);
 
-          // Update speed and time taken
-          var elapsedMS = now - start;
-          $('renderTime').innerHTML = (elapsedMS/1000.0).toFixed(1); // 1 comma
+          if ( sy++ < canvas.height ) {
+                  // show the user where we're rendering
+                  drawSolidLine(0, [255,59,3,255]);
+                  ctx.putImageData(img, 0, sy);
 
-          var speed = Math.floor(pixels / elapsedMS);
+                  // Update speed and time taken
+                  var elapsedMS = now - start;
+                  $('renderTime').innerHTML = (elapsedMS/1000.0).toFixed(1); // 1 comma
 
-          if ( metric_units(speed).substr(0,3)=="NaN" ) {
-            speed = Math.floor(60.0*pixels / elapsedMS);
-            $('renderSpeedUnit').innerHTML = 'minute';
-          } else
-            $('renderSpeedUnit').innerHTML = 'second';
+                  var speed = Math.floor(pixels / elapsedMS);
 
-          $('renderSpeed').innerHTML = metric_units(speed);
+                  if ( metric_units(speed).substr(0,3)=="NaN" ) {
+                      speed = Math.floor(60.0*pixels / elapsedMS);
+                      $('renderSpeedUnit').innerHTML = 'minute';
+                  } else
+                      $('renderSpeedUnit').innerHTML = 'second';
 
-          // yield control back to browser, so that canvas is updated
-          if (useRequestIdleFrame) {
-            // Perform exponential moving average to estimate last step time
-            thisLastStepMs = performance.now() - now;
-            estimatedLastStepMs = estimatedLastStepMs + 0.5 * (thisLastStepMs - estimatedLastStepMs);
-          } else {
-            lastUpdate = now;
-          }
-          if (useRequestIdleFrame) {
-            requestIdleFrame(scanline);
-          } else {
-            setTimeout(scanline, 0);
-          }
-        } else
-          scanline(performance.now(), deadline);
+                  $('renderSpeed').innerHTML = metric_units(speed);
+
+                  if (useRequestIdleFrame) {
+                      // Perform exponential moving average to estimate last step time
+                      thisLastStepMs = performance.now() - now;
+                      estimatedLastStepMs = estimatedLastStepMs + 0.5 * (thisLastStepMs - estimatedLastStepMs);
+                  }
+        } else {
+            return;
+        }
+      } while(!shouldYield(now, deadline, count++));
+
+      // yield control back to browser, so that canvas is updated
+      if (useRequestIdleFrame) {
+        requestIdleFrame(scanline);
+      } else {
+        setTimeout(scanline, 0);
       }
     };
 
@@ -532,7 +536,7 @@ function smoothColor(steps, n, Tr, Ti)
    *
    * but can be simplified using some elementary logarithm rules to
    */
-  return 5 + n - logHalfBase - Math.log(Math.log(Tr+Ti))*logBase;
+  return 10 + 1.5*n - logHalfBase - Math.log(Math.log(Tr+Ti))*logBase;
 }
 
 function pickColorHSV1(steps, n, Tr, Ti)
