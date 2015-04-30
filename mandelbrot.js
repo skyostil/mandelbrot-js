@@ -536,7 +536,7 @@ function smoothColor(steps, n, Tr, Ti)
    *
    * but can be simplified using some elementary logarithm rules to
    */
-  return 10 + 1.5*n - logHalfBase - Math.log(Math.log(Tr+Ti))*logBase;
+  return 5 + n - logHalfBase - Math.log(Math.log(Tr+Ti))*logBase;
 }
 
 function pickColorHSV1(steps, n, Tr, Ti)
