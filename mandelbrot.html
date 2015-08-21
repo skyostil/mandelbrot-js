@@ -29,6 +29,7 @@
         margin: 0px;
         font-size: 10pt;
         text-shadow: 0px 1px 0px rgb(40, 40, 40);
+        overflow: hide;
       }
 
       a { color: #ccc; text-decoration: none; }
@@ -78,6 +79,8 @@
         -khtml-user-select: none;
         -webkit-user-select: none;
         -o-user-select: none;
+
+        display: none;
       }
 
       #infoBox:hover {
@@ -183,11 +186,6 @@
 
       <form id="settingsForm" action="javascript:draw(getColorPicker(), getSamples(), true);">
         <table>
-        <tr>
-          <div id="spinnerContainer">
-            <div id="spinner"></div>
-          </div>
-        </tr>
         <tr>
           <td>Rendering time</td>
           <td>

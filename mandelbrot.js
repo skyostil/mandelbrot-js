@@ -66,14 +66,6 @@ function onRequestIdleFrameClicked()
   }
 }
 
-function animateSpinner(timestamp) {
-  var width = parseInt(window.getComputedStyle($('spinnerContainer')).width);
-  var x = -(timestamp / 8) % width;
-  $('spinner').style.left = x + 'px';
-  window.requestAnimationFrame(animateSpinner);
-}
-window.requestAnimationFrame(animateSpinner);
-
 function focusOnSubmit()
 {
   var e = $('submitButton');
@@ -476,10 +468,6 @@ function draw(pickColor, superSamples, clear)
           ctx.putImageData(img, 0, sy);
 
           if ( sy++ < canvas.height ) {
-                  // show the user where we're rendering
-                  drawSolidLine(0, [255,59,3,255]);
-                  ctx.putImageData(img, 0, sy);
-
                   // Update speed and time taken
                   var elapsedMS = now - start;
                   $('renderTime').innerHTML = (elapsedMS/1000.0).toFixed(1); // 1 comma
