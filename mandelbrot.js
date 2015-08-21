@@ -21,9 +21,9 @@
 /*
  * Global variables:
  */
-var zoomStart = 0.03;
+var zoomStart = 0.005;
 var zoom = [zoomStart, zoomStart];
-var lookAtDefault = [-1.48, 0.0];
+var lookAtDefault = [-1.48, -0.002];
 var lookAt = lookAtDefault;
 var xRange = [0, 0];
 var yRange = [0, 0];
@@ -553,21 +553,26 @@ function pickColorHSV2(steps, n, Tr, Ti)
   return c;
 }
 
-function pickColorHSV3(steps, n, Tr, Ti)
+var lut = []
+
+function pickColorHSV3(steps, n)
 {
-  if ( n == steps ) // converged?
-    return interiorColor;
+ if ( n == steps ) // converged?
+   return interiorColor;
 
-  var v = smoothColor(steps, n, Tr, Ti);
-  var c = hsv_to_rgb(360.0*v/steps, 1.0, 10.0*v/steps);
+ if (lut.length == 0) {
+   for (var i =0; i < 512; i++) {
+     var m = 4000.0 * i / 512.0;
+     var c1 = hsv_to_rgb(m % 360, 1.0, 1.0);
+     var c2 = hsv_to_rgb((m + 80) % 360, 1.0, 1.0);
+     c1.push(255); // alpha
+     c2.push(255); // alpha
+     lut.push(c1);
+     lut.push(c2);
+   }
+ }
 
-  // swap red and blue
-  var t = c[0];
-  c[0] = c[2];
-  c[2] = t;
-
-  c.push(255); // alpha
-  return c;
+ return lut[n % 1024];
 }
 
 function pickColorGrayscale(steps, n, Tr, Ti)
