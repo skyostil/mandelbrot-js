@@ -21,9 +21,9 @@
 /*
  * Global variables:
  */
-var zoomStart = 3.4;
+var zoomStart = 0.03;
 var zoom = [zoomStart, zoomStart];
-var lookAtDefault = [-0.6, 0];
+var lookAtDefault = [-1.48, 0.0];
 var lookAt = lookAtDefault;
 var xRange = [0, 0];
 var yRange = [0, 0];
@@ -45,6 +45,10 @@ canvas.height = window.innerHeight;
 var ccanvas = $('canvasControls');
 ccanvas.width  = window.innerWidth;
 ccanvas.height = window.innerHeight;
+//
+var bgcanvas = $('canvasMandelbrotBg');
+bgcanvas.width  = window.innerWidth;
+bgcanvas.height = window.innerHeight;
 //
 var ctx = canvas.getContext('2d');
 var img = ctx.createImageData(canvas.width, 1);
@@ -614,28 +618,36 @@ function main()
 
   if ( dragToZoom == true ) {
     var box = null;
+    var startX;
+    var startY;
 
-    $('canvasControls').onmousedown = function(e)
+    function down(e)
     {
-      if ( box == null )
-        box = [e.clientX, e.clientY, 0, 0];
+      if (e.clientX !== undefined) {
+        startX = e.clientX;
+        startY = e.clientY;
+      } else {
+        startX = e.changedTouches[0].clientX;
+        startY = e.changedTouches[0].clientY;
+      }
+      e.preventDefault();
     }
 
-    $('canvasControls').onmousemove = function(e)
+    function move(e)
     {
-      if ( box != null ) {
-        var c = ccanvas.getContext('2d');
-        c.lineWidth = 1;
-
-        // clear out old box first
-        c.clearRect(0, 0, ccanvas.width, ccanvas.height);
-
-        // draw new box
-        c.strokeStyle = '#FF3B03';
-        box[2] = e.clientX;
-        box[3] = e.clientY;
-        c.strokeRect(box[0], box[1], box[2]-box[0], box[3]-box[1]);
+      var dx, dy;
+      if (startX === undefined || startY === undefined)
+        return;
+      if (e.clientX !== undefined) {
+        dx = e.clientX - startX;
+        dy = e.clientY - startY;
+      } else {
+        dx = e.changedTouches[0].clientX - startX;
+        dy = e.changedTouches[0].clientY - startY;
       }
+      e.preventDefault();
+      bgcanvas.style.transform = 'translate3d(' + dx + 'px,' + dy + 'px,0px)';
+      canvas.style.transform = 'translate3d(' + dx + 'px,' + dy + 'px,0px)';
     }
 
     var zoomOut = function(event) {
@@ -661,8 +673,40 @@ function main()
       draw(getColorPicker(), getSamples());
     };
 
-    $('canvasControls').onmouseup = function(e)
+    function up(e)
     {
+      var dx, dy;
+      if (e.clientX !== undefined) {
+        dx = e.clientX - startX;
+        dy = e.clientY - startY;
+      } else {
+        dx = e.changedTouches[0].clientX - startX;
+        dy = e.changedTouches[0].clientY - startY;
+      }
+      e.preventDefault();
+      var bgCtx = bgcanvas.getContext('2d');
+      var cCtx = ccanvas.getContext('2d');
+
+      cCtx.drawImage(bgcanvas, dx, dy);
+      bgcanvas.width = bgcanvas.width;
+      bgCtx.drawImage(ccanvas, 0, 0);
+
+      ccanvas.width = ccanvas.width;
+
+      bgCtx.drawImage(canvas, dx, dy);
+
+      canvas.width = canvas.width;
+
+      var x = lookAt[0] - dx / canvas.width * zoom[0];
+      var y = lookAt[1] - dy / canvas.height * zoom[1];
+      lookAt = [x, y];
+      draw(getColorPicker(), getSamples());
+
+      startX = undefined;
+      startY = undefined;
+      bgcanvas.style.transform = '';
+      canvas.style.transform = '';
+
       if ( box != null ) {
         // Zoom out?
         if ( e.shiftKey ) {
@@ -705,6 +749,12 @@ function main()
         draw(getColorPicker(), getSamples());
       }
     }
+    $('canvasControls').onmousedown = down;
+    $('canvasControls').onmousemove = move;
+    $('canvasControls').onmouseup = up;
+    $('canvasControls').ontouchstart = down;
+    $('canvasControls').ontouchmove = move;
+    $('canvasControls').ontouchend = up;
   }
 
   /*
